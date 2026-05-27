@@ -318,6 +318,106 @@ def aquisicao_vs_retencao(vendas: pd.DataFrame) -> pd.DataFrame:
     return df.groupby(["mes", "tipo"])["id_cliente"].nunique().reset_index(name="clientes")
 
 
+# ============================================================
+# SPRINT 4 — Catálogo & Produtos
+# ============================================================
+
+
+def hierarquia_catalogo(vendas: pd.DataFrame, produtos: pd.DataFrame) -> pd.DataFrame:
+    """Agrega receita por categoria → marca → produto para treemap/sunburst."""
+    if vendas.empty or produtos.empty:
+        return pd.DataFrame()
+    df = vendas.merge(
+        produtos[["id_produto", "nome_produto", "categoria", "marca", "preco_atual"]],
+        on="id_produto", how="left",
+    )
+    agg = df.groupby(["categoria", "marca", "nome_produto"], as_index=False).agg(
+        receita=("receita", "sum"),
+        quantidade=("quantidade", "sum"),
+    )
+    return agg
+
+
+def matriz_bcg(vendas: pd.DataFrame, produtos: pd.DataFrame, periodo_dias: int = 90) -> pd.DataFrame:
+    """Matriz BCG: crescimento vs participação por produto.
+
+    - Crescimento: receita período atual vs período anterior
+    - Participação: receita do produto / receita total no período atual
+    """
+    if vendas.empty:
+        return pd.DataFrame()
+
+    fim = vendas["data_venda"].max()
+    inicio_atual = fim - pd.Timedelta(days=periodo_dias)
+    inicio_ant = inicio_atual - pd.Timedelta(days=periodo_dias)
+
+    atual = vendas[vendas["data_venda"] >= inicio_atual]
+    anterior = vendas[(vendas["data_venda"] >= inicio_ant) & (vendas["data_venda"] < inicio_atual)]
+
+    r_atual = atual.groupby("id_produto")["receita"].sum().rename("receita_atual")
+    r_ant = anterior.groupby("id_produto")["receita"].sum().rename("receita_anterior")
+
+    df = pd.concat([r_atual, r_ant], axis=1).fillna(0).reset_index()
+    total_atual = float(df["receita_atual"].sum())
+    df["participacao"] = df["receita_atual"] / total_atual if total_atual else 0
+    df["crescimento"] = df.apply(
+        lambda r: (r["receita_atual"] - r["receita_anterior"]) / r["receita_anterior"]
+        if r["receita_anterior"] > 0 else (1.0 if r["receita_atual"] > 0 else 0.0),
+        axis=1,
+    )
+    df = df.merge(produtos[["id_produto", "nome_produto", "categoria"]], on="id_produto", how="left")
+
+    # Classifica quadrantes (medianas como divisores)
+    med_part = df["participacao"].median()
+    med_cresc = 0.0  # crescimento zero é divisor natural
+    def quadrante(r):
+        alta_part = r["participacao"] >= med_part
+        alto_cresc = r["crescimento"] >= med_cresc
+        if alta_part and alto_cresc: return "⭐ Estrela"
+        if alta_part and not alto_cresc: return "🐄 Vaca Leiteira"
+        if not alta_part and alto_cresc: return "❓ Interrogação"
+        return "🐕 Abacaxi"
+    df["quadrante"] = df.apply(quadrante, axis=1)
+    return df
+
+
+def long_tail(vendas: pd.DataFrame, produtos: pd.DataFrame) -> pd.DataFrame:
+    """Curva long tail completa com classe ABC."""
+    if vendas.empty:
+        return pd.DataFrame()
+    df = vendas.merge(produtos[["id_produto", "nome_produto"]], on="id_produto", how="left")
+    agg = df.groupby(["id_produto", "nome_produto"], as_index=False)["receita"].sum().sort_values("receita", ascending=False)
+    total = agg["receita"].sum()
+    agg["pct_acumulado"] = agg["receita"].cumsum() / total if total else 0
+    agg["classe"] = agg["pct_acumulado"].apply(lambda p: "A" if p <= 0.80 else ("B" if p <= 0.95 else "C"))
+    agg["posicao"] = range(1, len(agg) + 1)
+    return agg
+
+
+def produtos_sem_venda(vendas: pd.DataFrame, produtos: pd.DataFrame) -> pd.DataFrame:
+    """SKUs do catálogo que não venderam no período."""
+    if produtos.empty:
+        return pd.DataFrame()
+    vendidos = set(vendas["id_produto"].unique()) if not vendas.empty else set()
+    sem = produtos[~produtos["id_produto"].isin(vendidos)].copy()
+    return sem.sort_values("preco_atual", ascending=False)
+
+
+def performance_categoria(vendas: pd.DataFrame, produtos: pd.DataFrame) -> pd.DataFrame:
+    """Performance agregada por categoria."""
+    if vendas.empty:
+        return pd.DataFrame()
+    df = vendas.merge(produtos[["id_produto", "categoria"]], on="id_produto", how="left")
+    agg = df.groupby("categoria", as_index=False).agg(
+        receita=("receita", "sum"),
+        quantidade=("quantidade", "sum"),
+        n_vendas=("id_venda", "nunique"),
+    )
+    agg["ticket_medio"] = agg["receita"] / agg["n_vendas"]
+    agg["preco_medio_item"] = agg["receita"] / agg["quantidade"]
+    return agg.sort_values("receita", ascending=False)
+
+
 def periodo_default(vendas: pd.DataFrame) -> Tuple[datetime, datetime]:
     """Define período padrão: últimos 90 dias a partir do dado mais recente."""
     if vendas.empty:

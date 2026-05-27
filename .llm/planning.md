@@ -364,7 +364,7 @@ CREATE INDEX idx_pc_produto_data ON precos_competidores(id_produto, data_coleta)
 - [ ] Long tail
 - [ ] Produtos sem venda
 
-**Critério de pronto:** Compras tem lista de SKUs candidatos a descontinuação.
+**Critério de pronto:** Compras tem lista de SKUs candidatos a descontinuação. ✅ ENTREGUE
 
 #### **Sprint 5 — Competitivo (Dia 6)**
 - [ ] Painel de posicionamento
