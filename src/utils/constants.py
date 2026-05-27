@@ -10,6 +10,6 @@ TABLES = {
 }
 
 CANAIS = ["loja_fisica", "ecommerce"]
-CONCORRENTES = ["Amazon", "Mercado Livre", "Shopee"]
+CONCORRENTES = ["Amazon", "Magalu", "Mercado Livre", "Shopee"]
 
 META_CRESCIMENTO_DEFAULT = 0.10

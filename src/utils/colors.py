@@ -23,6 +23,7 @@ CHANNEL_COLORS = {
 
 COMPETITOR_COLORS = {
     "Amazon":        "#FF9900",
+    "Magalu":        "#0046BE",
     "Mercado Livre": "#FFE600",
     "Shopee":        "#EE4D2D",
 }

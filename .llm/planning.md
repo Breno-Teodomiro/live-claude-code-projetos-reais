@@ -383,7 +383,7 @@ CREATE INDEX idx_pc_produto_data ON precos_competidores(id_produto, data_coleta)
 - [ ] Auditoria de formatação BR
 - [ ] README final + instruções de deploy
 
-**Critério de pronto:** Analista exporta query customizada em <30s.
+**Critério de pronto:** Analista exporta query customizada em <30s. ✅ ENTREGUE — TODAS AS 7 SPRINTS CONCLUÍDAS 🎉
 
 ### 15. Riscos e Mitigações
 
