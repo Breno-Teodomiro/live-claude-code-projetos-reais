@@ -4,6 +4,11 @@ Dashboard analítico premium para varejo / e-commerce com visão consolidada de
 **vendas, clientes, catálogo e inteligência competitiva**.
 Construído com **Python · Streamlit · Plotly · Pandas · Supabase**.
 
+### 🌐 Demo online
+
+**👉 [https://insightsjobsia-dashboard.streamlit.app](https://insightsjobsia-dashboard.streamlit.app)**
+
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://insightsjobsia-dashboard.streamlit.app)
 ![Stack](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.57-FF4B4B?logo=streamlit&logoColor=white)
 ![Plotly](https://img.shields.io/badge/Plotly-Premium-3F4F75?logo=plotly&logoColor=white)
@@ -162,6 +167,14 @@ Padrões consolidados na skill local [`.claude/skills/premium-dashboard-patterns
 
 O projeto é mantido com auxílio do **Claude Code** seguindo padrões consolidados
 em [`CLAUDE.md`](./CLAUDE.md). Sugestões e PRs bem-vindos.
+
+---
+
+## 👤 Autor
+
+**Breno Teodomiro**
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Breno%20Teodomiro-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/breno-teodomiro-power-bi)
 
 ---
 
