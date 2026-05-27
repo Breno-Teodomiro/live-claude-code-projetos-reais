@@ -26,34 +26,16 @@ vendas = load_vendas()
 clientes = load_clientes()
 produtos = load_produtos()
 
-# ---------- FILTROS ----------
-inicio_def, fim_def = periodo_default(vendas)
-
-with st.sidebar:
-    st.markdown("### 🎛️ Filtros")
-    periodo = st.date_input(
-        "Período",
-        value=(inicio_def.date(), fim_def.date()),
-        min_value=vendas["data_venda"].min().date() if not vendas.empty else None,
-        max_value=vendas["data_venda"].max().date() if not vendas.empty else None,
-    )
-    if isinstance(periodo, tuple) and len(periodo) == 2:
-        inicio, fim = periodo
-    else:
-        inicio, fim = inicio_def.date(), fim_def.date()
-
-    canais = sorted(vendas["canal_venda"].dropna().unique().tolist())
-    sel_canais = st.multiselect("Canal", canais, default=canais)
-
-    meta_growth = st.slider("Meta de crescimento %", min_value=-20, max_value=50, value=int(META_CRESCIMENTO_DEFAULT * 100), step=5) / 100
-    st.caption(f"Fonte: `{vendas.attrs.get('source', '?')}`")
-
-# Filtrar
+# ---------- FILTROS (componente global) ----------
 import pandas as pd
-inicio_dt = pd.Timestamp(inicio, tz="UTC")
-fim_dt = pd.Timestamp(fim, tz="UTC") + pd.Timedelta(days=1) - pd.Timedelta(microseconds=1)
+from src.components.filters import render_sidebar_filters, apply_filters
 
-vendas_f = vendas[vendas["canal_venda"].isin(sel_canais)]
+filtros = render_sidebar_filters(vendas, mostrar_canal=True, mostrar_meta=True)
+inicio_dt = filtros["inicio"]
+fim_dt = filtros["fim"]
+meta_growth = filtros["meta_growth"] if filtros["meta_growth"] is not None else META_CRESCIMENTO_DEFAULT
+
+vendas_f = vendas[vendas["canal_venda"].isin(filtros["canais"])]
 vendas_periodo = filter_periodo(vendas_f, "data_venda", inicio_dt, fim_dt)
 
 # ---------- KPIs ----------
