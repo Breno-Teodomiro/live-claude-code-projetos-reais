@@ -373,7 +373,7 @@ CREATE INDEX idx_pc_produto_data ON precos_competidores(id_produto, data_coleta)
 - [ ] Top oportunidades de reajuste
 - [ ] Histórico de preços (drill)
 
-**Critério de pronto:** Pricing aprova ou ajusta ≥5 SKUs por dia.
+**Critério de pronto:** Pricing aprova ou ajusta ≥5 SKUs por dia. ✅ ENTREGUE
 
 #### **Sprint 6 — Dados Brutos + Polish (Dia 7)**
 - [ ] st-aggrid com filtros e busca

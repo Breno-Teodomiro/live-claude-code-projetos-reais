@@ -418,6 +418,101 @@ def performance_categoria(vendas: pd.DataFrame, produtos: pd.DataFrame) -> pd.Da
     return agg.sort_values("receita", ascending=False)
 
 
+# ============================================================
+# SPRINT 5 — Inteligência Competitiva
+# ============================================================
+
+
+def gap_competitivo(produtos: pd.DataFrame, precos: pd.DataFrame, tol: float = 0.02) -> pd.DataFrame:
+    """Para cada SKU: nosso preço vs mediana dos concorrentes (preço mais recente por concorrente).
+
+    Retorna gap %, classificação (Mais barato / Paridade / Mais caro).
+    """
+    if produtos.empty or precos.empty:
+        return pd.DataFrame()
+
+    # Pegar último preço por (id_produto, nome_concorrente)
+    ultimo = (
+        precos.sort_values("data_coleta")
+        .groupby(["id_produto", "nome_concorrente"], as_index=False)
+        .tail(1)
+    )
+    mediana = ultimo.groupby("id_produto", as_index=False)["preco_concorrente"].median().rename(
+        columns={"preco_concorrente": "preco_mediana_concorrentes"}
+    )
+
+    df = produtos.merge(mediana, on="id_produto", how="inner")
+    df["gap"] = (df["preco_atual"] - df["preco_mediana_concorrentes"]) / df["preco_mediana_concorrentes"]
+
+    def classificar(g):
+        if g < -tol: return "Mais barato"
+        if g > tol:  return "Mais caro"
+        return "Paridade"
+    df["posicao"] = df["gap"].apply(classificar)
+    return df
+
+
+def resumo_posicionamento(df_gap: pd.DataFrame) -> dict:
+    if df_gap.empty:
+        return {"mais_barato": 0, "paridade": 0, "mais_caro": 0, "total": 0, "gap_medio": 0.0}
+    total = len(df_gap)
+    return {
+        "mais_barato": int((df_gap["posicao"] == "Mais barato").sum()),
+        "paridade":    int((df_gap["posicao"] == "Paridade").sum()),
+        "mais_caro":   int((df_gap["posicao"] == "Mais caro").sum()),
+        "total": total,
+        "gap_medio": float(df_gap["gap"].mean()),
+    }
+
+
+def gap_por_categoria_concorrente(produtos: pd.DataFrame, precos: pd.DataFrame) -> pd.DataFrame:
+    """Heatmap: gap % médio por categoria × concorrente."""
+    if produtos.empty or precos.empty:
+        return pd.DataFrame()
+    ultimo = (
+        precos.sort_values("data_coleta")
+        .groupby(["id_produto", "nome_concorrente"], as_index=False)
+        .tail(1)
+    )
+    df = ultimo.merge(produtos[["id_produto", "categoria", "preco_atual"]], on="id_produto", how="inner")
+    df["gap"] = (df["preco_atual"] - df["preco_concorrente"]) / df["preco_concorrente"]
+    pivot = df.pivot_table(values="gap", index="categoria", columns="nome_concorrente", aggfunc="mean")
+    return pivot
+
+
+def oportunidades_reajuste(df_gap: pd.DataFrame, vendas: pd.DataFrame, n: int = 10) -> pd.DataFrame:
+    """Top N SKUs onde estamos muito mais caros (gap >0) com maior receita."""
+    if df_gap.empty:
+        return pd.DataFrame()
+    receita = vendas.groupby("id_produto")["receita"].sum().rename("receita_periodo")
+    df = df_gap[df_gap["gap"] > 0.05].merge(receita, on="id_produto", how="left").fillna({"receita_periodo": 0})
+    df = df.sort_values(["gap", "receita_periodo"], ascending=[False, False])
+    df["preco_sugerido"] = df["preco_mediana_concorrentes"]
+    df["reducao_sugerida"] = df["preco_atual"] - df["preco_sugerido"]
+    return df.head(n)
+
+
+def vantagens_competitivas(df_gap: pd.DataFrame, vendas: pd.DataFrame, n: int = 10) -> pd.DataFrame:
+    """Top N SKUs onde estamos mais baratos com mais receita — destacar em ads."""
+    if df_gap.empty:
+        return pd.DataFrame()
+    receita = vendas.groupby("id_produto")["receita"].sum().rename("receita_periodo")
+    df = df_gap[df_gap["gap"] < -0.02].merge(receita, on="id_produto", how="left").fillna({"receita_periodo": 0})
+    df = df.sort_values(["receita_periodo", "gap"], ascending=[False, True])
+    return df.head(n)
+
+
+def historico_preco(precos: pd.DataFrame, produtos: pd.DataFrame, id_produto: str) -> pd.DataFrame:
+    """Histórico temporal de preços do produto (nosso atual constante + cada concorrente)."""
+    if precos.empty:
+        return pd.DataFrame()
+    df = precos[precos["id_produto"] == id_produto].copy().sort_values("data_coleta")
+    nosso = produtos.loc[produtos["id_produto"] == id_produto, "preco_atual"]
+    if not nosso.empty:
+        df.attrs["nosso_preco"] = float(nosso.iloc[0])
+    return df
+
+
 def periodo_default(vendas: pd.DataFrame) -> Tuple[datetime, datetime]:
     """Define período padrão: últimos 90 dias a partir do dado mais recente."""
     if vendas.empty:
