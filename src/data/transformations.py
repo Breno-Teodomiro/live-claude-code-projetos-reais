@@ -198,6 +198,126 @@ def media_movel(serie_temporal: pd.DataFrame, janela: int = 7) -> pd.DataFrame:
     return df
 
 
+# ============================================================
+# SPRINT 3 — Clientes & Geografia
+# ============================================================
+
+RFM_SEGMENTOS = {
+    "Campeões":        "🏆",
+    "Leais":           "💎",
+    "Potenciais":      "🌱",
+    "Novos":           "✨",
+    "Promissores":     "🌟",
+    "Atenção":         "⚠️",
+    "Em Risco":        "🔥",
+    "Não Posso Perder": "🆘",
+    "Hibernando":      "💤",
+    "Perdidos":        "👋",
+}
+
+
+def rfm(vendas: pd.DataFrame, ref_date: pd.Timestamp | None = None) -> pd.DataFrame:
+    """Calcula RFM por cliente com segmentação clássica em buckets 1-4."""
+    if vendas.empty:
+        return pd.DataFrame(columns=["id_cliente", "recencia", "frequencia", "monetario", "R", "F", "M", "score", "segmento"])
+    if ref_date is None:
+        ref_date = vendas["data_venda"].max()
+    agg = vendas.groupby("id_cliente").agg(
+        recencia=("data_venda", lambda x: (ref_date - x.max()).days),
+        frequencia=("id_venda", "nunique"),
+        monetario=("receita", "sum"),
+    ).reset_index()
+
+    # Scores 1-4 (quartis). Recência: menor é melhor (invertemos via rank desc).
+    agg["R"] = pd.qcut((-agg["recencia"]).rank(method="first"), q=4, labels=[1, 2, 3, 4]).astype(int)
+    agg["F"] = pd.qcut(agg["frequencia"].rank(method="first"), q=4, labels=[1, 2, 3, 4]).astype(int)
+    agg["M"] = pd.qcut(agg["monetario"].rank(method="first"), q=4, labels=[1, 2, 3, 4]).astype(int)
+    agg["score"] = agg["R"] * 100 + agg["F"] * 10 + agg["M"]
+    agg["segmento"] = agg.apply(_classificar_segmento, axis=1)
+    return agg
+
+
+def _classificar_segmento(row: pd.Series) -> str:
+    r, f, m = row["R"], row["F"], row["M"]
+    if r >= 4 and f >= 4 and m >= 4: return "Campeões"
+    if r >= 3 and f >= 3 and m >= 3: return "Leais"
+    if r >= 4 and f <= 2: return "Novos"
+    if r >= 3 and f <= 2 and m <= 2: return "Promissores"
+    if r >= 3 and f >= 3 and m <= 2: return "Potenciais"
+    if r <= 2 and f >= 3 and m >= 3: return "Não Posso Perder"
+    if r <= 2 and f >= 3: return "Em Risco"
+    if r == 2 and f <= 2: return "Atenção"
+    if r <= 2 and f <= 2 and m <= 2: return "Hibernando"
+    return "Perdidos"
+
+
+def resumo_rfm(df_rfm: pd.DataFrame) -> pd.DataFrame:
+    if df_rfm.empty:
+        return pd.DataFrame(columns=["segmento", "n_clientes", "pct", "monetario_total", "monetario_medio"])
+    total = len(df_rfm)
+    agg = df_rfm.groupby("segmento").agg(
+        n_clientes=("id_cliente", "count"),
+        monetario_total=("monetario", "sum"),
+        monetario_medio=("monetario", "mean"),
+    ).reset_index()
+    agg["pct"] = agg["n_clientes"] / total
+    agg["icone"] = agg["segmento"].map(RFM_SEGMENTOS).fillna("")
+    return agg.sort_values("monetario_total", ascending=False)
+
+
+def cohort_retencao(vendas: pd.DataFrame) -> pd.DataFrame:
+    """Heatmap de retenção: mês cohort × meses desde cohort."""
+    if vendas.empty:
+        return pd.DataFrame()
+    df = vendas.copy()
+    df["mes_venda"] = df["data_venda"].dt.to_period("M")
+    primeira = df.groupby("id_cliente")["mes_venda"].min().rename("mes_cohort")
+    df = df.merge(primeira, on="id_cliente")
+    df["meses_desde"] = (df["mes_venda"] - df["mes_cohort"]).apply(lambda x: x.n)
+
+    cohort_size = df.groupby("mes_cohort")["id_cliente"].nunique()
+    retidos = df.groupby(["mes_cohort", "meses_desde"])["id_cliente"].nunique().unstack(fill_value=0)
+    pivot = retidos.divide(cohort_size, axis=0)
+    pivot.index = pivot.index.astype(str)
+    return pivot
+
+
+def abc_clientes(vendas: pd.DataFrame, clientes: pd.DataFrame) -> pd.DataFrame:
+    """Curva ABC de clientes (top 20 + classe A/B/C)."""
+    if vendas.empty:
+        return pd.DataFrame()
+    agg = vendas.groupby("id_cliente", as_index=False)["receita"].sum().sort_values("receita", ascending=False)
+    total = agg["receita"].sum()
+    agg["pct_acumulado"] = agg["receita"].cumsum() / total
+    agg["classe"] = agg["pct_acumulado"].apply(lambda p: "A" if p <= 0.80 else ("B" if p <= 0.95 else "C"))
+    agg = agg.merge(clientes[["id_cliente", "nome_cliente", "estado"]], on="id_cliente", how="left")
+    return agg
+
+
+def distribuicao_geografica(vendas: pd.DataFrame, clientes: pd.DataFrame) -> pd.DataFrame:
+    """Hierarquia país → estado para treemap."""
+    if vendas.empty or clientes.empty:
+        return pd.DataFrame()
+    df = vendas.merge(clientes[["id_cliente", "estado", "pais"]], on="id_cliente", how="left")
+    agg = df.groupby(["pais", "estado"], as_index=False).agg(
+        receita=("receita", "sum"),
+        clientes=("id_cliente", "nunique"),
+    )
+    return agg
+
+
+def aquisicao_vs_retencao(vendas: pd.DataFrame) -> pd.DataFrame:
+    """Por mês: nº de clientes novos vs recorrentes."""
+    if vendas.empty:
+        return pd.DataFrame()
+    df = vendas.copy()
+    df["mes"] = df["data_venda"].dt.to_period("M").astype(str)
+    primeira = df.groupby("id_cliente")["data_venda"].min().dt.to_period("M").astype(str).rename("primeira_compra")
+    df = df.merge(primeira, on="id_cliente")
+    df["tipo"] = df.apply(lambda r: "Novo" if r["mes"] == r["primeira_compra"] else "Recorrente", axis=1)
+    return df.groupby(["mes", "tipo"])["id_cliente"].nunique().reset_index(name="clientes")
+
+
 def periodo_default(vendas: pd.DataFrame) -> Tuple[datetime, datetime]:
     """Define período padrão: últimos 90 dias a partir do dado mais recente."""
     if vendas.empty:

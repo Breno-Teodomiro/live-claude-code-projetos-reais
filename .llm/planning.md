@@ -355,7 +355,7 @@ CREATE INDEX idx_pc_produto_data ON precos_competidores(id_produto, data_coleta)
 - [ ] Coroplético + treemap geográfico
 - [ ] Aquisição vs Retenção
 
-**Critério de pronto:** Marketing exporta lista de clientes "Em Risco".
+**Critério de pronto:** Marketing exporta lista de clientes "Em Risco". ✅ ENTREGUE
 
 #### **Sprint 4 — Catálogo (Dia 5)**
 - [ ] Treemap hierárquico categoria→marca→produto
