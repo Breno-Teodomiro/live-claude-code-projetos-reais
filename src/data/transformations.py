@@ -117,6 +117,87 @@ def meta_e_realizado(vendas_atual: pd.DataFrame, vendas_anterior: pd.DataFrame, 
     return realizado, meta, pct
 
 
+# ============================================================
+# SPRINT 2 — Vendas & Performance
+# ============================================================
+
+DIAS_PT = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
+
+
+def heatmap_dia_hora(vendas: pd.DataFrame) -> pd.DataFrame:
+    """Receita por dia da semana × hora do dia."""
+    if vendas.empty:
+        return pd.DataFrame()
+    df = vendas.copy()
+    df["dia_semana"] = df["data_venda"].dt.dayofweek
+    df["hora"] = df["data_venda"].dt.hour
+    pivot = df.pivot_table(values="receita", index="dia_semana", columns="hora", aggfunc="sum", fill_value=0)
+    pivot.index = [DIAS_PT[i] for i in pivot.index]
+    return pivot
+
+
+def pareto_produtos(vendas: pd.DataFrame, produtos: pd.DataFrame, top_n: int = 30) -> pd.DataFrame:
+    """Curva de Pareto: produtos ordenados por receita + % acumulado."""
+    if vendas.empty:
+        return pd.DataFrame(columns=["nome_produto", "receita", "pct_acumulado"])
+    df = vendas.merge(produtos[["id_produto", "nome_produto"]], on="id_produto", how="left")
+    agg = df.groupby("nome_produto", as_index=False)["receita"].sum().sort_values("receita", ascending=False)
+    total = agg["receita"].sum()
+    agg["pct_acumulado"] = agg["receita"].cumsum() / total if total else 0
+    return agg.head(top_n)
+
+
+def evolucao_canal(vendas: pd.DataFrame, freq: str = "W") -> pd.DataFrame:
+    """Receita por canal ao longo do tempo (área empilhada)."""
+    if vendas.empty:
+        return pd.DataFrame(columns=["periodo", "canal_venda", "receita"])
+    df = (
+        vendas.groupby([pd.Grouper(key="data_venda", freq=freq), "canal_venda"], as_index=False)["receita"]
+        .sum()
+        .rename(columns={"data_venda": "periodo"})
+    )
+    return df
+
+
+def distribuicao_ticket(vendas: pd.DataFrame) -> pd.Series:
+    """Série de tickets (receita por venda) para histograma + boxplot."""
+    if vendas.empty:
+        return pd.Series(dtype=float)
+    return vendas.groupby("id_venda")["receita"].sum()
+
+
+def funil_vendas(vendas: pd.DataFrame, clientes: pd.DataFrame, produtos: pd.DataFrame) -> pd.DataFrame:
+    """Funil: Clientes cadastrados → Clientes ativos → Vendas → Itens."""
+    n_clientes_cad = len(clientes)
+    n_clientes_ativos = vendas["id_cliente"].nunique() if not vendas.empty else 0
+    n_vendas = vendas["id_venda"].nunique() if not vendas.empty else 0
+    n_itens = int(vendas["quantidade"].sum()) if not vendas.empty else 0
+    return pd.DataFrame({
+        "etapa": ["Base cadastrada", "Clientes ativos", "Transações", "Itens vendidos"],
+        "valor": [n_clientes_cad, n_clientes_ativos, n_vendas, n_itens],
+    })
+
+
+def sazonalidade_mensal(vendas: pd.DataFrame) -> pd.DataFrame:
+    """Heatmap calendário: ano × mês."""
+    if vendas.empty:
+        return pd.DataFrame()
+    df = vendas.copy()
+    df["ano"] = df["data_venda"].dt.year
+    df["mes"] = df["data_venda"].dt.month
+    pivot = df.pivot_table(values="receita", index="ano", columns="mes", aggfunc="sum", fill_value=0)
+    return pivot
+
+
+def media_movel(serie_temporal: pd.DataFrame, janela: int = 7) -> pd.DataFrame:
+    """Adiciona coluna de média móvel à série temporal."""
+    if serie_temporal.empty:
+        return serie_temporal
+    df = serie_temporal.copy()
+    df["media_movel"] = df["receita"].rolling(window=janela, min_periods=1).mean()
+    return df
+
+
 def periodo_default(vendas: pd.DataFrame) -> Tuple[datetime, datetime]:
     """Define período padrão: últimos 90 dias a partir do dado mais recente."""
     if vendas.empty:

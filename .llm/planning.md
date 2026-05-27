@@ -345,7 +345,7 @@ CREATE INDEX idx_pc_produto_data ON precos_competidores(id_produto, data_coleta)
 - [ ] Funil
 - [ ] Área empilhada de canal no tempo
 
-**Critério de pronto:** Diretor comercial identifica top produtos e horários quentes.
+**Critério de pronto:** Diretor comercial identifica top produtos e horários quentes. ✅ ENTREGUE
 
 #### **Sprint 3 — Clientes (Dia 4)**
 - [ ] Cálculo RFM (transformação)
