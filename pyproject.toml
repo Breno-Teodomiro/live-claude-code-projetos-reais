@@ -1,0 +1,17 @@
+[project]
+name = "live-claude-code-projetos-reais"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.4.6",
+    "pandas>=3.0.3",
+    "plotly>=6.7.0",
+    "python-dotenv>=1.2.2",
+    "streamlit>=1.57.0",
+    "streamlit-aggrid>=1.2.1.post2",
+    "streamlit-extras>=1.6.0",
+    "streamlit-option-menu>=0.4.0",
+    "supabase>=2.30.0",
+]
