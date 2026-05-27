@@ -8,15 +8,16 @@ Sempre se comunicar com o usuário em **português brasileiro (pt-BR)**, indepen
 
 ## Project Status
 
-This is a **greenfield project** — no application code exists yet. The repository currently contains:
+**✅ MVP completo e deployado em produção.**
 
-- `.llm/prd.md` — the authoritative product spec for what is being built
-- `database.md` — full technical documentation of the Supabase database
-- `arquivos/` — CSV source data (mirror of the Supabase tables)
-- `.mcp.json` — Supabase MCP server configuration
-- `.agents/skills/` and `.claude/skills/` — installed agent skills
+- 🌐 **App ao vivo:** https://insightsjobsia-dashboard.streamlit.app
+- 📦 **Repositório:** https://github.com/Breno-Teodomiro/live-claude-code-projetos-reais
+- ✅ **7 sprints concluídas** (0 a 6) — fundação, 5 páginas analíticas, dados brutos
+- 🎯 Filtros globais persistentes via `st.session_state`
+- 💾 Fallback automático para CSV em `arquivos/` quando Supabase indisponível
+- 🔑 Secrets via `st.secrets` (Streamlit Cloud) OU `.env` (local) — auto-detect em `src/data/connection.py`
 
-When implementing features, **read `.llm/prd.md` first** — it specifies the target architecture (Streamlit multi-page app, Plotly visuals, Supabase backend, premium dark theme).
+Para evoluir o projeto, consulte `.llm/planning.md` (sprints e decisões arquiteturais) e `.llm/prd.md` (spec do produto). Padrões visuais consolidados na skill local `.claude/skills/premium-dashboard-patterns/SKILL.md`.
 
 ## What's Being Built
 
